@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Generátor Java Entit</title>
+    <!-- Použijeme Bootstrap pro hezký vzhled bez psaní CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Highlight.js pro zvýraznění syntaxe kódu -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .code-container { position: relative; }
+        #outputCode { min-height: 200px; border-radius: 8px; }
+        .spinner-border { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">☕ Generátor Java Entit</h3>
+                </div>
+                <div class="card-body">
+
+                    <div class="mb-4">
+                        <label for="promptInput" class="form-label fw-bold">Popište entitu, kterou chcete vytvořit:</label>
+                        <textarea class="form-control" id="promptInput" rows="3"
+                                  placeholder="Např.: Potřebuji entitu Zaměstnanec, který má jméno, příjmení, plat a datum nástupu."></textarea>
+                        <div class="form-text">Zkuste použít klíčová slova jako: jméno, cena, datum, email, věk.</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-dark btn-lg" onclick="generateCode()">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" id="loadingSpinner"></span>
+                            <span id="btnText">Generovat Kód</span>
+                        </button>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h5 class="fw-bold">Výsledek:</h5>
+                    <div class="code-container">
+                        <pre><code class="language-java" id="outputCode">// Zde se objeví vygenerovaný kód...</code></pre>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<script>
+    async function generateCode() {
+        const prompt = document.getElementById('promptInput').value;
+        const spinner = document.getElementById('loadingSpinner');
+        const btnText = document.getElementById('btnText');
+        const outputElement = document.getElementById('outputCode');
+
+        if (!prompt.trim()) {
+            alert("Prosím zadejte popis entity.");
+            return;
+        }
+
+        // UI Efekty
+        spinner.style.display = "inline-block";
+        btnText.textContent = "Generuji...";
+        outputElement.textContent = "Analyzuji zadání...";
+
+        try {
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                body: prompt
+            });
+
+            if (!response.ok) throw new Error('Chyba při komunikaci se serverem');
+
+            const code = await response.text();
+
+            outputElement.textContent = code;
+            outputElement.removeAttribute('data-highlighted');
+            hljs.highlightElement(outputElement);
+
+        } catch (error) {
+            outputElement.textContent = "Chyba: " + error.message;
+        } finally {
+            spinner.style.display = "none";
+            btnText.textContent = "Generovat Kód";
+        }
+    }
+</script>
+
+</body>
+</html>
