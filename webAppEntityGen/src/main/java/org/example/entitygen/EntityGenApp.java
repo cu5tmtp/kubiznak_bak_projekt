@@ -18,33 +18,75 @@ public class EntityGenApp {
         SpringApplication.run(EntityGenApp.class, args);
     }
 
-    @PostMapping("/api/generate")
-    public ResponseEntity<String> generateCode(@RequestBody String userPrompt) {
+    public static class GenerateRequest {
+        public String prompt;
+        public boolean generateAccessors;
+    }
 
+    @PostMapping("/api/generate")
+    public ResponseEntity<String> generateCode(@RequestBody GenerateRequest request) {
+        String userPrompt = request.prompt;
+
+        //Získání názvu třídy
         String className = extractClassName(userPrompt);
 
-        List<String> fields = analyzeFields(userPrompt);
+        //Analýza polí
+        List<EntityField> fields = analyzeFields(userPrompt);
 
+        //Sestavení Java kódu
         StringBuilder code = new StringBuilder();
         code.append("import jakarta.persistence.*;\n");
-        code.append("import lombok.Data;\n");
+        if (!request.generateAccessors) {
+            code.append("import lombok.Data;\n");
+        }
         code.append("import java.time.LocalDate;\n\n");
 
         code.append("@Entity\n");
-        code.append("@Data // Lombok anotace pro gettery a settery\n");
+        if (!request.generateAccessors) {
+            code.append("@Data // Lombok generuje gettery/settery automaticky\n");
+        }
         code.append("public class ").append(className).append(" {\n\n");
 
+        // ID pole
         code.append("    @Id\n");
         code.append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n");
         code.append("    private Long id;\n\n");
 
-        for (String field : fields) {
-            code.append("    ").append(field).append("\n");
+        // Definice polí
+        for (EntityField field : fields) {
+            code.append("    private ").append(field.type).append(" ").append(field.name).append(";\n");
+        }
+
+        // Explicitní Gettery a Settery
+        if (request.generateAccessors) {
+            code.append("\n    // --- Gettery a Settery ---\n\n");
+
+            // Get/Set pro ID
+            appendAccessors(code, "Long", "id");
+
+            // Get/Set pro ostatní
+            for (EntityField field : fields) {
+                appendAccessors(code, field.type, field.name);
+            }
         }
 
         code.append("}\n");
 
         return ResponseEntity.ok(code.toString());
+    }
+
+    private void appendAccessors(StringBuilder sb, String type, String name) {
+        String capitalized = name.substring(0, 1).toUpperCase() + name.substring(1);
+
+        // Getter
+        sb.append("    public ").append(type).append(" get").append(capitalized).append("() {\n");
+        sb.append("        return this.").append(name).append(";\n");
+        sb.append("    }\n\n");
+
+        // Setter
+        sb.append("    public void set").append(capitalized).append("(").append(type).append(" ").append(name).append(") {\n");
+        sb.append("        this.").append(name).append(" = ").append(name).append(";\n");
+        sb.append("    }\n\n");
     }
 
     private String extractClassName(String text) {
@@ -57,40 +99,25 @@ public class EntityGenApp {
         return "GeneratedEntity";
     }
 
-    private List<String> analyzeFields(String text) {
-        List<String> fields = new ArrayList<>();
+    private static class EntityField {
+        String type;
+        String name;
+        EntityField(String type, String name) { this.type = type; this.name = name; }
+    }
+
+    private List<EntityField> analyzeFields(String text) {
+        List<EntityField> fields = new ArrayList<>();
         text = text.toLowerCase();
 
-        if (text.contains("jméno") || text.contains("název")) {
-            fields.add("private String nazev;");
-        }
-        if (text.contains("příjmení")) {
-            fields.add("private String prijmeni;");
-        }
-        if (text.contains("email") || text.contains("mail")) {
-            fields.add("private String email;");
-        }
-        if (text.contains("věk") || text.contains("počet")) {
-            fields.add("private Integer vek;");
-        }
-        if (text.contains("cena") || text.contains("plat")) {
-            fields.add("private java.math.BigDecimal cena;");
-        }
-        if (text.contains("datum") || text.contains("narození")) {
-            fields.add("private LocalDate datum;");
-        }
-        if (text.contains("aktivní") || text.contains("smazáno")) {
-            fields.add("private Boolean jeAktivni;");
-        }
-        if (text.contains("popis") || text.contains("detail")) {
-            fields.add("private String popis;");
-        }
+        if (text.contains("jméno") || text.contains("název")) fields.add(new EntityField("String", "nazev"));
+        if (text.contains("příjmení")) fields.add(new EntityField("String", "prijmeni"));
+        if (text.contains("email") || text.contains("mail")) fields.add(new EntityField("String", "email"));
+        if (text.contains("věk") || text.contains("počet")) fields.add(new EntityField("Integer", "vek"));
+        if (text.contains("cena") || text.contains("plat")) fields.add(new EntityField("java.math.BigDecimal", "cena"));
+        if (text.contains("datum")) fields.add(new EntityField("LocalDate", "datum"));
+        if (text.contains("aktivní")) fields.add(new EntityField("Boolean", "jeAktivni"));
 
-        if (fields.isEmpty()) {
-            fields.add("// Nepodařilo se detekovat specifická pole z popisu.");
-            fields.add("// Zkuste napsat např: 'Entita Uživatel s jménem, emailem a věkem'");
-        }
-
+        if (fields.isEmpty()) fields.add(new EntityField("String", "popis"));
         return fields;
     }
 }
