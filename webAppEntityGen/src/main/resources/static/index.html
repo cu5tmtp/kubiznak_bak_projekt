@@ -4,90 +4,148 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Generátor Java Entit</title>
+    <!-- Bootstrap pro vzhled -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Highlight.js pro barevný kód -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <style>
-        body { background-color: #f8f9fa; }
-        .code-container { position: relative; }
-        /* Nastavení tmavého pozadí pro element pre, aby byl šedý/tmavý i před naplněním */
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border-radius: 15px;
+            overflow: hidden;
+        }
         pre {
-            background-color: #282c34;
-            border-radius: 8px;
-            padding: 1rem;
+            background-color: #282c34 !important;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
         }
         #outputCode {
-            min-height: 200px;
-            font-family: 'Consolas', monospace;
-            display: block;
+            min-height: 300px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
         }
-        .spinner-border { display: none; }
+        .form-switch .form-check-input {
+            width: 3em;
+            height: 1.5em;
+            cursor: pointer;
+        }
+        .btn-primary {
+            padding: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white p-3">
-                    <h4 class="mb-0">Java Entity AI Generator</h4>
+        <div class="col-lg-10">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white p-4">
+                    <h3 class="mb-0 text-center">Java Entity Generator</h3>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-4 p-md-5">
 
-                    <div class="mb-3">
-                        <label for="promptInput" class="form-label fw-bold">Popis entity:</label>
-                        <textarea class="form-control" id="promptInput" rows="3"
-                                  placeholder="Např.: Uživatel, který má jméno, email a věk"></textarea>
+                    <div class="mb-4">
+                        <label for="promptInput" class="form-label fw-bold">Popis entity (česky nebo anglicky):</label>
+                        <textarea class="form-control form-control-lg" id="promptInput" rows="4"
+                                  placeholder="Např.: Entita pro Knihu, která má název, autora, počet stran a datum vydání"></textarea>
                     </div>
 
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" type="checkbox" id="accessorCheckbox">
-                        <label class="form-check-input-label fw-semibold" for="accessorCheckbox">
-                            Generovat explicitní Gettery a Settery (místo Lomboku)
-                        </label>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="aiSwitch" checked onchange="toggleAI()">
+                                    <label class="form-check-label fw-bold ms-2 text-primary" for="aiSwitch">Použít Gemini AI</label>
+                                </div>
+                                <small class="text-muted d-block mt-1">AI pochopí kontext a datové typy automaticky.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light" id="accessorWrap">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="accessorCheckbox">
+                                    <label class="form-check-label fw-bold ms-2" for="accessorCheckbox">Explicitní Get/Set</label>
+                                </div>
+                                <small class="text-muted d-block mt-1">Generuje klasické metody místo anotace @Data.</small>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-primary btn-lg" onclick="generateCode()">
-                            <span class="spinner-border spinner-border-sm me-2" role="status" id="loadingSpinner"></span>
-                            <span id="btnText">Vygenerovat kód</span>
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg shadow-sm" onclick="generateCode()" id="genBtn">
+                            <span id="btnText">Vygenerovat zdrojový kód</span>
                         </button>
                     </div>
 
-                    <hr class="my-4">
+                    <hr class="my-5">
 
-                    <h6 class="text-uppercase text-muted fw-bold small mb-3">Vygenerovaný zdrojový kód:</h6>
-                    <div class="code-container">
-                        <pre><code class="language-java" id="outputCode">// Výsledek se zobrazí zde...</code></pre>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-uppercase text-muted fw-bold small mb-0">Zdrojový kód (Java):</h6>
                     </div>
+
+                    <pre><code class="language-java" id="outputCode">// Zde se objeví vygenerovaná Java třída...</code></pre>
 
                 </div>
             </div>
+            <p class="text-center mt-4 text-muted small">
+                Vytvořeno pomocí Spring Boot & Google Gemini API
+            </p>
         </div>
     </div>
 </div>
 
+<!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
-    // Inicializace zvýrazňování při načtení
-    document.addEventListener('DOMContentLoaded', (event) => {
-        hljs.highlightAll();
-    });
+    // Inicializace zvýrazňování
+    hljs.highlightAll();
+
+    function toggleAI() {
+        const isAI = document.getElementById('aiSwitch').checked;
+        const accessorCheckbox = document.getElementById('accessorCheckbox');
+        const accessorLabel = document.querySelector('label[for="accessorCheckbox"]');
+
+        // Pokud je AI zapnutá, explicitní gettery jsou obvykle zbytečné (AI dává @Data)
+        if (isAI) {
+            accessorCheckbox.disabled = true;
+            accessorCheckbox.checked = false;
+            accessorLabel.classList.add('text-muted');
+        } else {
+            accessorCheckbox.disabled = false;
+            accessorLabel.classList.remove('text-muted');
+        }
+    }
+
+    // Spustit hned po načtení
+    toggleAI();
 
     async function generateCode() {
         const prompt = document.getElementById('promptInput').value;
+        const useAI = document.getElementById('aiSwitch').checked;
         const genAccessors = document.getElementById('accessorCheckbox').checked;
-        const spinner = document.getElementById('loadingSpinner');
+        const output = document.getElementById('outputCode');
+        const btn = document.getElementById('genBtn');
         const btnText = document.getElementById('btnText');
-        const outputElement = document.getElementById('outputCode');
 
         if (!prompt.trim()) {
-            alert("Napište prosím zadání.");
+            alert("Napište prosím popis entity, kterou chcete vytvořit.");
             return;
         }
 
-        spinner.style.display = "inline-block";
-        btnText.textContent = "Generuji...";
+        // UI Feedback
+        btn.disabled = true;
+        btnText.textContent = "Generuji kód...";
+        output.textContent = "// Probíhá generování, prosím čekejte...";
+        output.removeAttribute('data-highlighted');
+        hljs.highlightElement(output);
 
         try {
             const response = await fetch('/api/generate', {
@@ -95,22 +153,25 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: prompt,
+                    useAI: useAI,
                     generateAccessors: genAccessors
                 })
             });
 
+            if (!response.ok) throw new Error("Server vrátil chybu " + response.status);
+
             const code = await response.text();
-            outputElement.textContent = code;
 
-            // Resetování a znovupoužití highlight.js
-            outputElement.removeAttribute('data-highlighted');
-            hljs.highlightElement(outputElement);
+            // Zobrazení výsledku
+            output.textContent = code;
+            output.removeAttribute('data-highlighted');
+            hljs.highlightElement(output);
 
-        } catch (error) {
-            outputElement.textContent = "Chyba: " + error.message;
+        } catch (e) {
+            output.textContent = "// CHYBA PŘI KOMUNIKACI SE SERVEREM:\n// " + e.message;
         } finally {
-            spinner.style.display = "none";
-            btnText.textContent = "Vygenerovat kód";
+            btn.disabled = false;
+            btnText.textContent = "Vygenerovat zdrojový kód";
         }
     }
 </script>
